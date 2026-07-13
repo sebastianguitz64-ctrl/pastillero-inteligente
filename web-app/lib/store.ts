@@ -1,5 +1,9 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { Redis } from "@upstash/redis";
+
+const redis = new Redis({
+    url: process.env.KV_REST_API_URL!,
+    token: process.env.KV_REST_API_TOKEN!,
+});
 
 export type Medicamento = {
     id: number;
@@ -31,7 +35,7 @@ export type Store = {
     estadisticas: Estadisticas;
 };
 
-const STORE_PATH = path.join(process.cwd(), "data", "store.json");
+const STORE_KEY = "pastillero:store";
 
 const DEFAULT_STORE: Store = {
     medicamentos: [
@@ -50,27 +54,23 @@ const DEFAULT_STORE: Store = {
 };
 
 export async function readStore(): Promise<Store> {
-    await fs.mkdir(path.dirname(STORE_PATH), { recursive: true });
+    const stored = await redis.get<Store>(STORE_KEY);
 
-    try {
-        const raw = await fs.readFile(STORE_PATH, "utf8");
-        const parsed = JSON.parse(raw) as Partial<Store>;
-
-        return {
-            medicamentos: parsed.medicamentos ?? DEFAULT_STORE.medicamentos,
-            historial: parsed.historial ?? DEFAULT_STORE.historial,
-            estadisticas: {
-                tomados: parsed.estadisticas?.tomados ?? DEFAULT_STORE.estadisticas.tomados,
-                olvidados: parsed.estadisticas?.olvidados ?? DEFAULT_STORE.estadisticas.olvidados,
-            },
-        };
-    } catch {
-        await fs.writeFile(STORE_PATH, JSON.stringify(DEFAULT_STORE, null, 2), "utf8");
+    if (!stored) {
+        await redis.set(STORE_KEY, DEFAULT_STORE);
         return DEFAULT_STORE;
     }
+
+    return {
+        medicamentos: stored.medicamentos ?? DEFAULT_STORE.medicamentos,
+        historial: stored.historial ?? DEFAULT_STORE.historial,
+        estadisticas: {
+            tomados: stored.estadisticas?.tomados ?? DEFAULT_STORE.estadisticas.tomados,
+            olvidados: stored.estadisticas?.olvidados ?? DEFAULT_STORE.estadisticas.olvidados,
+        },
+    };
 }
 
 export async function writeStore(store: Store): Promise<void> {
-    await fs.mkdir(path.dirname(STORE_PATH), { recursive: true });
-    await fs.writeFile(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
+    await redis.set(STORE_KEY, store);
 }
