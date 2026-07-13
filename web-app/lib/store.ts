@@ -37,6 +37,11 @@ export type Store = {
 
 const STORE_KEY = "pastillero:store";
 
+function getStoreKey(deviceId?: string) {
+    const normalizedDeviceId = String(deviceId ?? "").trim();
+    return normalizedDeviceId ? `${STORE_KEY}:${normalizedDeviceId}` : STORE_KEY;
+}
+
 const DEFAULT_STORE: Store = {
     medicamentos: [
         { id: 1, nombre: "Vitamina C", hora: 8, minuto: 0, casilla: 1, dosis: "1 tableta", activo: true, tomadoHoy: false },

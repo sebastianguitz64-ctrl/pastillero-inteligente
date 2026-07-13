@@ -35,8 +35,54 @@ const estadisticasIniciales: Estadisticas = {
     olvidados: 0,
 };
 
+const DEVICE_ID_STORAGE_KEY = "pastillero-device-id";
+
 function generarId() {
     return Date.now() + Math.floor(Math.random() * 1000);
+}
+
+function generarDeviceId() {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+        return crypto.randomUUID();
+    }
+
+    if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+        const bytes = new Uint8Array(16);
+        crypto.getRandomValues(bytes);
+        const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+        return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    }
+
+    return `${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
+}
+
+function obtenerDeviceId() {
+    if (typeof window === "undefined") {
+        return "";
+    }
+
+    let deviceId = window.localStorage.getItem(DEVICE_ID_STORAGE_KEY);
+    if (!deviceId) {
+        deviceId = generarDeviceId();
+        window.localStorage.setItem(DEVICE_ID_STORAGE_KEY, deviceId);
+    }
+
+    return deviceId;
+}
+
+async function appFetch(input: RequestInfo, init?: RequestInit) {
+    const deviceId = obtenerDeviceId();
+    if (!deviceId) {
+        throw new Error("No se pudo obtener el ID del dispositivo.");
+    }
+
+    const headers = new Headers(init?.headers);
+    headers.set("x-device-id", deviceId);
+
+    return fetch(input, {
+        ...init,
+        headers,
+    });
 }
 
 function formatearHora(hora: number, minuto: number) {
@@ -62,7 +108,7 @@ export default function HomePage() {
     const [mensaje, setMensaje] = useState<string>("");
 
     const cargarDatos = async () => {
-        const respuesta = await fetch("/api/medicamentos");
+        const respuesta = await appFetch("/api/medicamentos");
         const datos = await respuesta.json();
         setMedicamentos(datos.medicamentos ?? []);
         setHistorial(datos.historial ?? []);
@@ -117,7 +163,7 @@ export default function HomePage() {
         }
 
         if (editandoId !== null) {
-            const respuesta = await fetch("/api/medicamentos", {
+            const respuesta = await appFetch("/api/medicamentos", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id: editandoId, nombre, hora, minuto, casilla, dosis }),
@@ -134,7 +180,7 @@ export default function HomePage() {
             return;
         }
 
-        const respuesta = await fetch("/api/medicamentos", {
+        const respuesta = await appFetch("/api/medicamentos", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ nombre, hora, minuto, casilla, dosis }),
@@ -169,7 +215,7 @@ export default function HomePage() {
         const medicamento = medicamentos.find((item) => item.id === id);
         if (!medicamento) return;
 
-        const respuesta = await fetch(`/api/medicamentos?id=${id}`, {
+        const respuesta = await appFetch(`/api/medicamentos?id=${id}`, {
             method: "DELETE",
         });
 
@@ -189,7 +235,7 @@ export default function HomePage() {
         const medicamento = medicamentos.find((item) => item.id === id);
         if (!medicamento) return;
 
-        const respuesta = await fetch("/api/medicamentos", {
+        const respuesta = await appFetch("/api/medicamentos", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ action: "mark-taken", id }),
@@ -208,7 +254,7 @@ export default function HomePage() {
         const medicamento = medicamentos.find((item) => item.id === id);
         if (!medicamento) return;
 
-        const respuesta = await fetch("/api/medicamentos", {
+        const respuesta = await appFetch("/api/medicamentos", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ action: "mark-skipped", id }),
