@@ -1,0 +1,58 @@
+{
+  "medicamentos": [
+    {
+      "id": 1,
+      "nombre": "Vitamina C",
+      "hora": 8,
+      "minuto": 0,
+      "casilla": 1,
+      "dosis": "1 tableta",
+      "activo": true,
+      "tomadoHoy": false
+    },
+    {
+      "id": 2,
+      "nombre": "Amoxicilina",
+      "hora": 14,
+      "minuto": 0,
+      "casilla": 4,
+      "dosis": "500mg",
+      "activo": true,
+      "tomadoHoy": true
+    }
+  ],
+  "historial": [
+    {
+      "id": 1783927535874,
+      "nombre": "Amoxicilina tomado",
+      "horaTexto": "01:25",
+      "tomado": true,
+      "fecha": "2026-07-13T07:25:35.099Z"
+    },
+    {
+      "id": 1783927533607,
+      "nombre": "Ibuprofeno eliminado",
+      "horaTexto": "01:25",
+      "tomado": false,
+      "fecha": "2026-07-13T07:25:33.047Z"
+    },
+    {
+      "id": 101,
+      "nombre": "Vitamina C",
+      "horaTexto": "08:00",
+      "tomado": true,
+      "fecha": "2026-07-13T00:00:00.000Z"
+    },
+    {
+      "id": 102,
+      "nombre": "Amoxicilina",
+      "horaTexto": "14:00",
+      "tomado": false,
+      "fecha": "2026-07-13T00:00:00.000Z"
+    }
+  ],
+  "estadisticas": {
+    "tomados": 2,
+    "olvidados": 1
+  }
+}
