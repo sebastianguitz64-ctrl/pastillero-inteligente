@@ -231,6 +231,20 @@ export default function HomePage() {
         setMensaje("No se pudo eliminar el medicamento.");
     };
 
+    const handleEliminarHistorial = async (id: number) => {
+        const respuesta = await appFetch(`/api/medicamentos?historyId=${id}`, {
+            method: "DELETE",
+        });
+
+        if (respuesta.ok) {
+            await cargarDatos();
+            setMensaje("Entrada de historial eliminada.");
+            return;
+        }
+
+        setMensaje("No se pudo eliminar la entrada de historial.");
+    };
+
     const marcarTomado = async (id: number) => {
         const medicamento = medicamentos.find((item) => item.id === id);
         if (!medicamento) return;
@@ -371,6 +385,9 @@ export default function HomePage() {
                                         <strong>{evento.nombre}</strong>
                                         <div className="muted">{evento.horaTexto}</div>
                                     </div>
+                                </div>
+                                <div className="action-row">
+                                    <button className="soft-button danger" onClick={() => handleEliminarHistorial(evento.id)}>Eliminar</button>
                                 </div>
                             </div>
                         ))}

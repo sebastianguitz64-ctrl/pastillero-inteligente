@@ -58,11 +58,12 @@ const DEFAULT_STORE: Store = {
     },
 };
 
-export async function readStore(): Promise<Store> {
-    const stored = await redis.get<Store>(STORE_KEY);
+export async function readStore(deviceId?: string): Promise<Store> {
+    const storeKey = getStoreKey(deviceId);
+    const stored = await redis.get<Store>(storeKey);
 
     if (!stored) {
-        await redis.set(STORE_KEY, DEFAULT_STORE);
+        await redis.set(storeKey, DEFAULT_STORE);
         return DEFAULT_STORE;
     }
 
@@ -76,6 +77,7 @@ export async function readStore(): Promise<Store> {
     };
 }
 
-export async function writeStore(store: Store): Promise<void> {
-    await redis.set(STORE_KEY, store);
+export async function writeStore(store: Store, deviceId?: string): Promise<void> {
+    const storeKey = getStoreKey(deviceId);
+    await redis.set(storeKey, store);
 }

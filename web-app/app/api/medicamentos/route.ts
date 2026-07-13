@@ -26,6 +26,10 @@ function crearEvento(nombre: string, tomado: boolean) {
     };
 }
 
+function obtenerDeviceIdFromRequest(request: Request) {
+    return request.headers.get("x-device-id")?.trim() ?? "";
+}
+
 function normalizarMedicamento(payload: Partial<Medicamento>): Medicamento | null {
     const nombre = String(payload.nombre ?? "").trim();
     const dosis = String(payload.dosis ?? "").trim();
@@ -53,12 +57,14 @@ function normalizarMedicamento(payload: Partial<Medicamento>): Medicamento | nul
     };
 }
 
-export async function GET() {
-    const store = await readStore();
+export async function GET(request: Request) {
+    const deviceId = obtenerDeviceIdFromRequest(request);
+    const store = await readStore(deviceId);
     return NextResponse.json(store);
 }
 
 export async function POST(request: Request) {
+    const deviceId = obtenerDeviceIdFromRequest(request);
     const payload = (await request.json()) as {
         action?: "create" | "mark-taken" | "mark-skipped";
         id?: number;
@@ -69,7 +75,7 @@ export async function POST(request: Request) {
         dosis?: string;
     };
 
-    const store = await readStore();
+    const store = await readStore(deviceId);
 
     if (payload.action === "mark-taken" || payload.action === "mark-skipped") {
         const medicamento = store.medicamentos.find((item) => item.id === payload.id);
@@ -85,7 +91,7 @@ export async function POST(request: Request) {
             olvidados: payload.action === "mark-skipped" ? store.estadisticas.olvidados + 1 : store.estadisticas.olvidados,
         };
 
-        await writeStore(store);
+        await writeStore(store, deviceId);
         return NextResponse.json(store);
     }
 
@@ -97,11 +103,12 @@ export async function POST(request: Request) {
     store.medicamentos = [...store.medicamentos, medicamento];
     store.historial = [crearEvento(`${medicamento.nombre} registrado`, true), ...store.historial].slice(0, STORE_LIMIT);
 
-    await writeStore(store);
+    await writeStore(store, deviceId);
     return NextResponse.json(store);
 }
 
 export async function PUT(request: Request) {
+    const deviceId = obtenerDeviceIdFromRequest(request);
     const payload = (await request.json()) as {
         id?: number;
         nombre?: string;
@@ -111,7 +118,7 @@ export async function PUT(request: Request) {
         dosis?: string;
     };
 
-    const store = await readStore();
+    const store = await readStore(deviceId);
     const medicamento = normalizarMedicamento(payload);
 
     if (!medicamento || medicamento.id !== payload.id) {
@@ -129,20 +136,40 @@ export async function PUT(request: Request) {
     };
     store.historial = [crearEvento(`${medicamento.nombre} actualizado`, true), ...store.historial].slice(0, STORE_LIMIT);
 
-    await writeStore(store);
+    await writeStore(store, deviceId);
     return NextResponse.json(store);
 }
 
 export async function DELETE(request: Request) {
+    const deviceId = obtenerDeviceIdFromRequest(request);
     const { searchParams } = new URL(request.url);
     const idParam = searchParams.get("id");
-    const id = Number(idParam);
+    const historyIdParam = searchParams.get("historyId");
 
+    if (historyIdParam) {
+        const historyId = Number(historyIdParam);
+        if (Number.isNaN(historyId)) {
+            return NextResponse.json({ error: "ID de historial no válido" }, { status: 400 });
+        }
+
+        const store = await readStore(deviceId);
+        const historialLength = store.historial.length;
+        store.historial = store.historial.filter((item) => item.id !== historyId);
+
+        if (store.historial.length === historialLength) {
+            return NextResponse.json({ error: "Entrada de historial no encontrada" }, { status: 404 });
+        }
+
+        await writeStore(store, deviceId);
+        return NextResponse.json(store);
+    }
+
+    const id = Number(idParam);
     if (Number.isNaN(id)) {
         return NextResponse.json({ error: "ID no válido" }, { status: 400 });
     }
 
-    const store = await readStore();
+    const store = await readStore(deviceId);
     const medicamento = store.medicamentos.find((item) => item.id === id);
 
     if (!medicamento) {
@@ -152,6 +179,6 @@ export async function DELETE(request: Request) {
     store.medicamentos = store.medicamentos.filter((item) => item.id !== id);
     store.historial = [crearEvento(`${medicamento.nombre} eliminado`, false), ...store.historial].slice(0, STORE_LIMIT);
 
-    await writeStore(store);
+    await writeStore(store, deviceId);
     return NextResponse.json(store);
 }
