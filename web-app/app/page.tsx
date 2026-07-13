@@ -82,7 +82,26 @@ async function appFetch(input: RequestInfo, init?: RequestInit) {
     return fetch(input, {
         ...init,
         headers,
+        cache: init?.cache ?? "no-store",
     });
+}
+
+async function obtenerErrorMensaje(respuesta: Response) {
+    try {
+        const cuerpo = await respuesta.json();
+        if (cuerpo && typeof cuerpo === "object" && "error" in cuerpo) {
+            return String((cuerpo as any).error ?? `Error ${respuesta.status}`);
+        }
+    } catch {
+        try {
+            const texto = await respuesta.text();
+            return texto ? `${respuesta.status}: ${texto}` : `Error ${respuesta.status}`;
+        } catch {
+            return `Error ${respuesta.status}`;
+        }
+    }
+
+    return `Error ${respuesta.status}`;
 }
 
 function formatearHora(hora: number, minuto: number) {
@@ -228,7 +247,7 @@ export default function HomePage() {
             return;
         }
 
-        setMensaje("No se pudo eliminar el medicamento.");
+        setMensaje(await obtenerErrorMensaje(respuesta));
     };
 
     const handleEliminarHistorial = async (id: number) => {
@@ -242,7 +261,21 @@ export default function HomePage() {
             return;
         }
 
-        setMensaje("No se pudo eliminar la entrada de historial.");
+        setMensaje(await obtenerErrorMensaje(respuesta));
+    };
+
+    const handleLimpiarHistorial = async () => {
+        const respuesta = await appFetch(`/api/medicamentos?historyId=all`, {
+            method: "DELETE",
+        });
+
+        if (respuesta.ok) {
+            await cargarDatos();
+            setMensaje("Historial eliminado.");
+            return;
+        }
+
+        setMensaje(await obtenerErrorMensaje(respuesta));
     };
 
     const marcarTomado = async (id: number) => {
@@ -375,6 +408,7 @@ export default function HomePage() {
                     <div className="section-title">
                         <span className="section-icon">🕘</span>
                         <h2>Historial</h2>
+                        <button className="secondary-button" type="button" onClick={handleLimpiarHistorial}>Eliminar historial</button>
                     </div>
                     <div className="stack">
                         {historial.map((evento) => (

@@ -147,12 +147,19 @@ export async function DELETE(request: Request) {
     const historyIdParam = searchParams.get("historyId");
 
     if (historyIdParam) {
+        const store = await readStore(deviceId);
+
+        if (historyIdParam === "all") {
+            store.historial = [];
+            await writeStore(store, deviceId);
+            return NextResponse.json(store);
+        }
+
         const historyId = Number(historyIdParam);
         if (Number.isNaN(historyId)) {
             return NextResponse.json({ error: "ID de historial no válido" }, { status: 400 });
         }
 
-        const store = await readStore(deviceId);
         const historialLength = store.historial.length;
         store.historial = store.historial.filter((item) => item.id !== historyId);
 
